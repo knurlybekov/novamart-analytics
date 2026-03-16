@@ -1,0 +1,229 @@
+================================================================================
+                    NOVAMART E-COMMERCE DATA QUALITY REPORT
+                         Staging Layer Assessment
+                              February 2026
+================================================================================
+
+EXECUTIVE SUMMARY
+--------------------------------------------------------------------------------
+This report documents the data quality assessment for NovaMart's e-commerce
+operations dataset covering January 2023 - December 2024. The dataset contains
+166,381 records across 12 interconnected tables.
+
+OVERALL ASSESSMENT: GOOD with targeted remediation required
+
+Key Findings:
+- 3 critical data quality issues requiring remediation before analysis
+- 62.75% stockout rate in inventory snapshots indicates severe operational issue
+- ~$1.08M in refunds and ~$200K in cancelled orders require investigation
+- All primary keys are unique (no duplicates detected)
+- All foreign key relationships are intact (no orphan records)
+
+
+================================================================================
+1. TOTAL RECORDS PER TABLE
+================================================================================
+
+| Table                    | Records  | Role in Analysis                      |
+|--------------------------|----------|---------------------------------------|
+| 01_ORDERS                | 15,000   | Central fact table - all joins root  |
+| 02_ORDER_ITEMS           | 29,668   | Line-item detail (~2 items/order)    |
+| 03_PRODUCTS              | 480      | Product dimension                     |
+| 04_CUSTOMERS             | 6,200    | Customer dimension                    |
+| 05_SELLERS               | 45       | Seller/vendor dimension               |
+| 06_SHIPPING_LOGISTICS    | 91,850   | Event tracking (~6 events/order)     |
+| 07_RETURNS_CANCELLATIONS | 3,187    | Returns analysis (21% of orders)     |
+| 08_CUSTOMER_REVIEWS      | 8,686    | Voice of customer (58% review rate)  |
+| 09_INVENTORY_SNAPSHOTS   | 8,400    | 80 products x 105 weekly snapshots   |
+| 10_MARKETING_CAMPAIGNS   | 240      | 10 channels x 24 months              |
+| 11_SUPPORT_TICKETS       | 2,250    | Customer service metrics              |
+| 12_CANCELLATIONS         | 375      | Order cancellation tracking           |
+|--------------------------|----------|---------------------------------------|
+| TOTAL                    | 166,381  |                                       |
+
+
+================================================================================
+2. NULL RATES FOR KEY COLUMNS
+================================================================================
+
+CRITICAL NULLS (Impact Joins/Analysis):
+--------------------------------------------------------------------------------
+| Table       | Column              | Null Count | Null %  | Impact            |
+|-------------|---------------------|------------|---------|-------------------|
+| 01_ORDERS   | customer_id         | ~300       | 2.0%    | Breaks customer   |
+|             |                     |            |         | attribution       |
+| 01_ORDERS   | delivered_date      | ~991       | 6.6%    | Expected for      |
+|             |                     |            |         | non-delivered     |
+| 07_RETURNS  | return_received_date| ~382       | 12.0%   | In-transit items  |
+| 11_SUPPORT  | resolved_date       | ~275       | 12.2%   | Open tickets      |
+| 11_SUPPORT  | satisfaction_score  | ~275       | 12.2%   | Unresolved only   |
+--------------------------------------------------------------------------------
+
+ASSESSMENT:
+- customer_id NULL (2%): UNEXPECTED - should investigate root cause
+- delivered_date NULL (6.6%): EXPECTED - orders in Processing/Shipped/Cancelled
+- return_received_date NULL (12%): EXPECTED - returns still in transit
+- resolved_date NULL (12.2%): EXPECTED - tickets still open
+
+
+================================================================================
+3. INVALID/IMPOSSIBLE RECORDS FOUND
+================================================================================
+
+CRITICAL ISSUES:
+--------------------------------------------------------------------------------
+| Issue                          | Count | % of Table | Severity  |
+|--------------------------------|-------|------------|-----------|
+| delivered_date < order_date    | ~150  | 1.0%       | CRITICAL  |
+| delivered_date < shipped_date  | ~50   | 0.3%       | CRITICAL  |
+| shipped_date < approval_date   | ~25   | 0.2%       | MODERATE  |
+--------------------------------------------------------------------------------
+
+ROOT CAUSE ANALYSIS:
+The ~1% impossible delivery dates (delivered before ordered) indicate:
+1. Timezone handling issues during data entry
+2. Manual date corrections done incorrectly
+3. System clock synchronization problems between warehouses
+
+These records CANNOT be used for delivery time analysis without correction.
+
+
+REFERENTIAL INTEGRITY CHECK:
+--------------------------------------------------------------------------------
+| Relationship                          | Orphan Records | Status    |
+|---------------------------------------|----------------|-----------|
+| orders.customer_id -> customers       | 0              | PASSED    |
+| orders.seller_id -> sellers           | 0              | PASSED    |
+| order_items.order_id -> orders        | 0              | PASSED    |
+| order_items.product_id -> products    | 0              | PASSED    |
+| shipping.order_id -> orders           | 0              | PASSED    |
+| returns.order_id -> orders            | 0              | PASSED    |
+| reviews.order_id -> orders            | 0              | PASSED    |
+| support.order_id -> orders            | 0              | PASSED    |
+| cancellations.order_id -> orders      | 0              | PASSED    |
+--------------------------------------------------------------------------------
+
+All foreign key relationships are intact. Joins will not produce orphan records.
+
+
+DUPLICATE PRIMARY KEY CHECK:
+--------------------------------------------------------------------------------
+All 12 tables passed - no duplicate primary keys detected.
+
+
+================================================================================
+4. OUTLIERS DETECTED
+================================================================================
+
+STATISTICAL OUTLIERS (IQR Method: values beyond 1.5x IQR):
+--------------------------------------------------------------------------------
+| Table         | Column        | Outlier Count | % of Records | Range          |
+|---------------|---------------|---------------|--------------|----------------|
+| 01_ORDERS     | order_total   | 968           | 6.5%         | $3.87-$6,570   |
+| 01_ORDERS     | shipping_cost | 1,246         | 8.3%         | $0.10-$1,370   |
+| 02_ORDER_ITEMS| unit_price    | 2,080         | 7.0%         | $3.87-$897     |
+| 02_ORDER_ITEMS| item_total    | 2,385         | 8.0%         | $3.87-$4,485   |
+--------------------------------------------------------------------------------
+
+ASSESSMENT:
+These outliers represent LEGITIMATE high-value transactions:
+- Electronics category has products up to $897
+- Bulk orders (qty 5) drive high item_totals
+- Shipping cost outliers correlate with heavy/bulky items
+
+DECISION: Retain all outliers - they represent valid business transactions.
+
+
+OPERATIONAL OUTLIERS (Business Logic):
+--------------------------------------------------------------------------------
+| Metric                    | Value    | Benchmark | Assessment              |
+|---------------------------|----------|-----------|-------------------------|
+| Stockout rate             | 62.75%   | <10%      | SEVERE - investigate    |
+| Late delivery rate        | 22.1%    | <5%       | HIGH - carrier issue    |
+| Avg resolution time       | 50 hrs   | <24 hrs   | SLOW - process issue    |
+| Return rate               | 21.2%    | <15%      | HIGH - quality issue    |
+--------------------------------------------------------------------------------
+
+
+================================================================================
+5. REMEDIATION DECISIONS
+================================================================================
+
+ISSUE 1: NULL customer_id in Orders (~2%)
+--------------------------------------------------------------------------------
+Decision: FLAG (do not exclude)
+
+Rationale:
+- 300 orders worth ~$165K in revenue should not be discarded
+- Create is_customer_matched flag for segmentation analysis
+- Include in revenue reporting, exclude from customer-level metrics
+- Investigate source system to prevent future occurrences
+
+Implementation:
+  ALTER TABLE orders ADD COLUMN is_customer_matched BOOLEAN;
+  UPDATE orders SET is_customer_matched = (customer_id IS NOT NULL);
+
+
+ISSUE 2: Impossible Dates (delivered < ordered) (~1%)
+--------------------------------------------------------------------------------
+Decision: FLAG + EXCLUDE from time-based analysis
+
+Rationale:
+- These records corrupt delivery time calculations
+- Cannot be reliably corrected without source data investigation
+- Revenue data is still valid
+
+Implementation:
+  ALTER TABLE orders ADD COLUMN has_valid_dates BOOLEAN;
+  UPDATE orders SET has_valid_dates = NOT (delivered_date < order_date);
+
+  -- For delivery time analysis, filter:
+  WHERE has_valid_dates = TRUE
+
+
+ISSUE 3: NULL return_received_date (~12%)
+--------------------------------------------------------------------------------
+Decision: NO ACTION REQUIRED
+
+Rationale:
+- These represent returns currently in transit (status = 'In Transit')
+- Business-expected NULL - not a data quality issue
+- Will be populated when items arrive at warehouse
+
+
+ISSUE 4: Statistical Outliers in Order Values
+--------------------------------------------------------------------------------
+Decision: RETAIN ALL
+
+Rationale:
+- High-value orders are legitimate transactions (verified against products)
+- Electronics, bulk orders, and premium shipping explain the distribution
+- Excluding would bias revenue analysis by ~$1.2M
+- Median-based metrics already account for skewness
+
+
+ISSUE 5: High Stockout Rate (62.75%)
+--------------------------------------------------------------------------------
+Decision: ESCALATE FOR BUSINESS REVIEW
+
+Rationale:
+- This is not a data quality issue - it's an operational finding
+- Inventory tracking only covers 80 of 480 products (16.7%)
+- The tracked products appear to be high-velocity items
+- Requires supply chain / inventory management investigation
+
+
+================================================================================
+SUMMARY: DATA READINESS FOR ANALYSIS
+================================================================================
+
+| Analysis Type              | Data Ready? | Conditions                      |
+|----------------------------|-------------|----------------------------------|
+| Revenue Reporting          | YES         | Use all records                  |
+| Customer Segmentation      | YES         | Exclude NULL customer_id (2%)    |
+| Delivery Time Analysis     | YES         | Exclude invalid dates (1%)       |
+| Product Performance        | YES         | All data valid                   |
+| Marketing Attribution      | YES         | All data valid                   |
+| Return Analysis            | YES         | Account for in-transit NULLs     |
+| Inventory Analysis         | PARTIAL     | Only 80/480 products tracked     |
+--------------------------------------------------------------------------------
