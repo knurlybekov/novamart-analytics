@@ -10,6 +10,9 @@
 
 ![Executive KPI Overview](dashboard_images/01_executive_kpi_overview.png)
 
+> [!NOTE]
+> **About the data:** "NovaMart" is fictional, and this project runs on a **synthetic, AI-generated dataset** built to mimic real e-commerce operations — with deliberately embedded bottlenecks and data-quality issues. No real customers or companies are represented, and the dollar figures are illustrative, not a real P&L. What's real and portfolio-relevant is the **methodology**: the data pipeline, statistical validation, financial modeling, and dashboarding all transfer directly to production data. See [The Dataset](#the-dataset).
+
 ---
 
 ## Table of Contents
@@ -282,7 +285,7 @@ SNOWFLAKE_DATABASE=NOVAMART
 
 ## The Dataset
 
-Two years (Jan 2023 – Dec 2024) of simulated NovaMart operations: **166,381 rows across 12 interconnected tables**, with **intentionally embedded** operational bottlenecks and realistic data-quality issues. Full column-level documentation in [`data/00_DATA_DICTIONARY.md`](data/00_DATA_DICTIONARY.md).
+Two years (Jan 2023 – Dec 2024) of **AI-generated, synthetic** NovaMart operations data: **166,381 rows across 12 interconnected tables**, with **intentionally embedded** operational bottlenecks and realistic data-quality issues that mirror real-world analytics challenges. NovaMart is a fictional company; no real customers, sellers, or transactions are represented. Full column-level documentation in [`data/00_DATA_DICTIONARY.md`](data/00_DATA_DICTIONARY.md).
 
 | # | Table | Rows | Role |
 |---|---|---|---|
@@ -323,7 +326,7 @@ Prioritized by ROI (high impact + low effort first):
 ## Limitations & Next Steps
 
 - Inventory analysis is partial — only **80 of 480 products** (16.7%) are tracked in snapshots.
-- The dataset is **simulated**; absolute dollar figures illustrate methodology rather than a live P&L.
+- The dataset is **AI-generated and synthetic** — absolute dollar figures illustrate the methodology, not a real company's P&L. The analytical approach (pipeline, statistics, financial modeling, dashboarding) is what transfers to real data.
 - **Next:** A/B test the carrier and staffing changes; build a predictive model to flag at-risk orders *before* they ship late; and stand up an automated alerting pipeline on the marts layer.
 
 ---
