@@ -1,0 +1,4 @@
+stage,stage_order,sample_size,median_hours,p90_hours,p95_hours,mean_hours,std_hours
+Approval,1,14625,5.0,23.0,36.0,9.6,13.1
+Processing & Shipping,2,14321,21.0,87.0,125.0,37.1,48.2
+In Transit,3,13879,83.0,185.0,211.0,97.5,58.6

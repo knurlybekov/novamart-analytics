@@ -1,0 +1,5 @@
+Bottleneck,Test,Sample Sizes,Median Diff,p-value,Effect Size,Conclusion
+Weekend approval delay,Mann-Whitney U,"Weekend: n=3,981, Weekday: n=10,028",14.0 hours,0.000000,d=1.71 (Large),Significant
+BudgetPost winter delays,Mann-Whitney U,"Winter: n=970, Other: n=2,801",74.0 hours,0.000000,d=1.38 (Large),Significant
+WH-West processing,Mann-Whitney U,"WH-West: n=1,885, Others: n=12,124",25.0 hours,0.000000,d=0.66 (Medium),Significant
+Late delivery → Returns,Chi-Square,"n=14,009",2.1% higher,0.004074,V=0.02 (Small),Significant
